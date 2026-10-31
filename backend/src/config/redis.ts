@@ -1,5 +1,4 @@
-
-import Redis from "ioredis";
+import { Redis } from "ioredis";
 
 const redisPassword = process.env.REDIS_PASSWORD;
 
@@ -24,7 +23,7 @@ redis.on("ready", () => {
   console.log("[Redis] Connection ready");
 });
 
-redis.on("error", (error) => {
+redis.on("error", (error: Error) => {
   console.error("[Redis] Connection error:", error.message);
 });
 
