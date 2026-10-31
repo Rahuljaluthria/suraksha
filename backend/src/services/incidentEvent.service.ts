@@ -42,3 +42,4 @@ export async function publishIncidentEvent(event: IncidentEventPayload): Promise
     console.warn(`[Kafka] Non-blocking: Failed to publish ${event.eventType} for ${event.incidentId}:`, error);
   }
 }
+

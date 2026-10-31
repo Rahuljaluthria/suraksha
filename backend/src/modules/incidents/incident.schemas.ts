@@ -82,3 +82,4 @@ export type UpdateIncidentInput = z.infer<typeof updateIncidentSchema>;
 export type ChangeStatusInput = z.infer<typeof changeStatusSchema>;
 export type AssignIncidentInput = z.infer<typeof assignIncidentSchema>;
 export type QueryIncidentsInput = z.infer<typeof queryIncidentsSchema>;
+
