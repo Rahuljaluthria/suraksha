@@ -56,6 +56,11 @@ export const PERMISSIONS = {
   "report:generate": "Generate reports",
   "report:export": "Export reports",
 
+  // AI assistance (advisory only; every result needs human review)
+  "ai:draft_report": "Use AI to draft an incident report from a description",
+  "ai:analyze": "Use AI to analyse an incident the user can access",
+  "ai:recommend": "Use AI to get remediation suggestions for an accessible incident",
+
   // Audit
   "audit:read": "View audit logs",
   "audit:export": "Export audit logs",
@@ -100,7 +105,12 @@ export const ROLES: Record<RoleCode, RoleDefinition> = {
   EMPLOYEE: {
     name: "Employee",
     description: "Reports incidents and follows the ones they reported.",
-    permissions: ["incident:create", "incident:read:own", "incident:comment"],
+    permissions: [
+      "incident:create",
+      "incident:read:own",
+      "incident:comment",
+      "ai:draft_report",
+    ],
   },
   INVESTIGATOR: {
     name: "Investigator",
@@ -114,6 +124,7 @@ export const ROLES: Record<RoleCode, RoleDefinition> = {
       "investigation:evidence:manage",
       "remediation:read",
       "report:read",
+      "ai:analyze",
     ],
   },
   SECURITY_ENGINEER: {
@@ -129,6 +140,8 @@ export const ROLES: Record<RoleCode, RoleDefinition> = {
       "remediation:read",
       "remediation:create",
       "remediation:update",
+      "ai:analyze",
+      "ai:recommend",
     ],
   },
   SECURITY_ANALYST: {
@@ -144,6 +157,8 @@ export const ROLES: Record<RoleCode, RoleDefinition> = {
       "remediation:read",
       "report:read",
       "report:generate",
+      "ai:analyze",
+      "ai:recommend",
     ],
   },
   INCIDENT_COMMANDER: {
@@ -166,6 +181,8 @@ export const ROLES: Record<RoleCode, RoleDefinition> = {
       "report:read",
       "report:generate",
       "report:export",
+      "ai:analyze",
+      "ai:recommend",
     ],
   },
   AUDITOR: {

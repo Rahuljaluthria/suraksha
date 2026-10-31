@@ -28,6 +28,9 @@ import {
 import { IncidentTimeline } from "@/components/incidents/IncidentTimeline";
 import { StatusTransitionModal } from "@/components/incidents/StatusTransitionModal";
 import { AssignResponderModal } from "@/components/incidents/AssignResponderModal";
+import { AiAnalysisPanel } from "@/components/ai/AiAnalysisPanel";
+import { AiRemediationPanel } from "@/components/ai/AiRemediationPanel";
+import { useAiStatus } from "@/features/ai/useAiStatus";
 import type { IncidentStatus } from "@/types/incident";
 import { toast } from "sonner";
 
@@ -46,6 +49,11 @@ export function IncidentDetailPage() {
 
   const [isStatusModalOpen, setIsStatusModalOpen] = useState(false);
   const [isAssignModalOpen, setIsAssignModalOpen] = useState(false);
+
+  // AI analysis is optional: shown only when configured and the user's role allows it.
+  const aiStatus = useAiStatus();
+  const canUseAiAnalysis = Boolean(aiStatus?.available && aiStatus.features.analyze);
+  const canUseAiRemediation = Boolean(aiStatus?.available && aiStatus.features.recommend);
 
   useEffect(() => {
     if (id) {
@@ -238,6 +246,22 @@ export function IncidentDetailPage() {
               </div>
             )}
           </div>
+
+          {canUseAiAnalysis && (
+            <AiAnalysisPanel
+              key={incident.id}
+              incidentId={incident.id}
+              incidentUpdatedAt={incident.updatedAt}
+            />
+          )}
+
+          {canUseAiRemediation && (
+            <AiRemediationPanel
+              key={`rem-${incident.id}`}
+              incidentId={incident.id}
+              incidentUpdatedAt={incident.updatedAt}
+            />
+          )}
 
           {/* Assigned Responders Card */}
           <div className="rounded-xl border border-border bg-card p-5 space-y-3 shadow-xs">

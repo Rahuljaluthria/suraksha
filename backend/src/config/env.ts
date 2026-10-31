@@ -23,4 +23,19 @@ export const env = {
 
   // Whether public registration requires email verification before login
   REQUIRE_EMAIL_VERIFICATION: process.env.REQUIRE_EMAIL_VERIFICATION === "true",
+
+  // AI assistance (DeepSeek). The key is optional: without it the AI endpoints
+  // answer 503 AI_NOT_CONFIGURED and the rest of the application is unaffected.
+  AI_ENABLED: process.env.AI_ENABLED !== "false",
+  DEEPSEEK_API_KEY: process.env.DEEPSEEK_API_KEY || "",
+  DEEPSEEK_BASE_URL: (process.env.DEEPSEEK_BASE_URL || "https://api.deepseek.com").replace(/\/+$/, ""),
+  DEEPSEEK_MODEL: process.env.DEEPSEEK_MODEL || "deepseek-flash",
+  AI_TIMEOUT_MS: Number(process.env.AI_TIMEOUT_MS) || 30_000,
+  AI_MAX_CONCURRENCY: Number(process.env.AI_MAX_CONCURRENCY) || 4,
+  AI_RATE_LIMIT_MAX: Number(process.env.AI_RATE_LIMIT_MAX) || 15,
+  AI_RATE_LIMIT_WINDOW_MINUTES: Number(process.env.AI_RATE_LIMIT_WINDOW_MINUTES) || 10,
+  // "none" keeps IP addresses (useful indicators), "private" masks RFC1918 ranges, "all" masks every IPv4
+  AI_MASK_IPS: (["none", "private", "all"].includes(process.env.AI_MASK_IPS ?? "")
+    ? process.env.AI_MASK_IPS
+    : "none") as "none" | "private" | "all",
 };

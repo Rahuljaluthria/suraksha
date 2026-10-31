@@ -16,6 +16,9 @@ import {
   PRIORITY_CONFIG,
 } from "@/features/incidents/incidentConstants";
 import type { IncidentSeverity, IncidentPriority } from "@/types/incident";
+import { AiReportAssistant, type AppliedReportDraft } from "@/components/ai/AiReportAssistant";
+import { AiSuggestedBadge } from "@/components/ai/AiMarkers";
+import { useAiStatus } from "@/features/ai/useAiStatus";
 import { toast } from "sonner";
 import { ZodError } from "zod";
 
@@ -36,11 +39,37 @@ export function ReportIncidentPage() {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [apiError, setApiError] = useState<string | null>(null);
 
+  // AI drafting is optional: shown only when the deployment has it configured and the user may use it.
+  const aiStatus = useAiStatus();
+  const aiDraftingEnabled = Boolean(aiStatus?.available && aiStatus.features.draftReport);
+  // Form fields whose current value came from an AI draft and has not been edited since.
+  const [aiFields, setAiFields] = useState<ReadonlySet<string>>(new Set());
+
+  const handleApplyDraft = (draft: AppliedReportDraft) => {
+    setForm((prev) => ({
+      ...prev,
+      title: draft.title,
+      category: draft.category,
+      severity: draft.severity,
+      description: draft.description,
+    }));
+    setAiFields(new Set(["title", "category", "severity", "description"]));
+    setErrors({});
+    toast.info("AI draft applied. Review every field, then submit when you are happy with it.");
+  };
+
   const handleChange = (
     field: keyof ReportIncidentFormValues,
     value: string
   ) => {
     setForm((prev) => ({ ...prev, [field]: value }));
+    if (aiFields.has(field)) {
+      setAiFields((prev) => {
+        const next = new Set(prev);
+        next.delete(field);
+        return next;
+      });
+    }
     if (errors[field]) {
       setErrors((prev) => {
         const next = { ...prev };
@@ -122,6 +151,13 @@ export function ReportIncidentPage() {
         </div>
       )}
 
+      {aiDraftingEnabled && (
+        <AiReportAssistant
+          formHasContent={form.title.trim().length > 0 || form.description.trim().length > 0}
+          onApply={handleApplyDraft}
+        />
+      )}
+
       {/* Incident Reporting Card */}
       <div className="rounded-xl border border-border bg-card p-6 shadow-xs">
         <form onSubmit={handleSubmit} className="space-y-5">
@@ -129,6 +165,7 @@ export function ReportIncidentPage() {
           <div className="space-y-1.5">
             <Label htmlFor="title" className="text-xs font-medium">
               Incident Summary / Title <span className="text-destructive">*</span>
+              {aiFields.has("title") && <AiSuggestedBadge />}
             </Label>
             <Input
               id="title"
@@ -148,6 +185,7 @@ export function ReportIncidentPage() {
             <div className="space-y-1.5">
               <Label htmlFor="category" className="text-xs font-medium">
                 Threat Category <span className="text-destructive">*</span>
+                {aiFields.has("category") && <AiSuggestedBadge />}
               </Label>
               <select
                 id="category"
@@ -170,6 +208,7 @@ export function ReportIncidentPage() {
             <div className="space-y-1.5">
               <Label htmlFor="severity" className="text-xs font-medium">
                 Initial Severity Assessment <span className="text-destructive">*</span>
+                {aiFields.has("severity") && <AiSuggestedBadge label="AI-suggested, please confirm" />}
               </Label>
               <select
                 id="severity"
@@ -231,6 +270,7 @@ export function ReportIncidentPage() {
             <div className="flex items-center justify-between">
               <Label htmlFor="description" className="text-xs font-medium">
                 Detailed Incident Narrative & Indicators <span className="text-destructive">*</span>
+                {aiFields.has("description") && <AiSuggestedBadge />}
               </Label>
               <span className="text-[10px] font-mono text-muted-foreground">
                 {form.description.length} / 10,000

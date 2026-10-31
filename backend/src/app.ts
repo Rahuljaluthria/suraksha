@@ -5,6 +5,7 @@ import rateLimit from "express-rate-limit";
 import cookieParser from "cookie-parser";
 import authRoutes from "./modules/auth/auth.routes.js";
 import incidentRoutes from "./modules/incidents/incident.routes.js";
+import aiRoutes from "./modules/ai/ai.routes.js";
 
 const app = express();
 
@@ -48,5 +49,8 @@ app.use("/api/auth", authRoutes);
 
 // Incident management routes
 app.use("/api/incidents", incidentRoutes);
+
+// AI-assisted incident features (advisory only)
+app.use("/api/ai", aiRoutes);
 
 export default app;
