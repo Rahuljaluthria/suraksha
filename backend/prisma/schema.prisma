@@ -6,3 +6,129 @@ generator client {
 datasource db {
   provider = "mysql"
 }
+
+enum UserStatus {
+  PENDING_VERIFICATION
+  ACTIVE
+  SUSPENDED
+  DISABLED
+}
+
+model User {
+  id                  String     @id @default(cuid()) @db.VarChar(191)
+  email               String     @unique @db.VarChar(191)
+  firstName           String     @db.VarChar(100)
+  lastName            String     @db.VarChar(100)
+  passwordHash        String     @db.VarChar(255)
+
+  status              UserStatus @default(PENDING_VERIFICATION)
+  emailVerifiedAt     DateTime?
+  passwordChangedAt   DateTime   @default(now())
+
+  failedLoginAttempts Int        @default(0)
+  lockedUntil         DateTime?
+  lastLoginAt         DateTime?
+
+  createdAt           DateTime   @default(now())
+  updatedAt           DateTime   @updatedAt
+
+  roles               UserRole[]
+  refreshSessions     RefreshSession[]
+  auditLogs           AuditLog[] @relation("AuditActor")
+
+  @@index([status])
+  @@index([createdAt])
+}
+
+model Role {
+  id          String   @id @default(cuid()) @db.VarChar(191)
+  code        String   @unique @db.VarChar(100)
+  name        String   @db.VarChar(100)
+  description String?  @db.VarChar(255)
+  isSystem    Boolean  @default(true)
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  users       UserRole[]
+  permissions RolePermission[]
+}
+
+model UserRole {
+  userId     String   @db.VarChar(191)
+  roleId     String   @db.VarChar(191)
+  assignedAt DateTime @default(now())
+
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role       Role     @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  @@id([userId, roleId])
+  @@index([roleId])
+}
+
+model Permission {
+  id          String   @id @default(cuid()) @db.VarChar(191)
+  key         String   @unique @db.VarChar(150)
+  description String?  @db.VarChar(255)
+
+  createdAt   DateTime @default(now())
+
+  roles       RolePermission[]
+}
+
+model RolePermission {
+  roleId       String     @db.VarChar(191)
+  permissionId String     @db.VarChar(191)
+  createdAt    DateTime   @default(now())
+
+  role         Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@id([roleId, permissionId])
+  @@index([permissionId])
+}
+
+model RefreshSession {
+  id          String    @id @default(cuid()) @db.VarChar(191)
+  userId      String    @db.VarChar(191)
+
+  tokenHash   String    @unique @db.VarChar(255)
+  familyId    String    @db.VarChar(191)
+
+  userAgent   String?   @db.VarChar(500)
+  ipAddress   String?   @db.VarChar(45)
+
+  expiresAt   DateTime
+  lastUsedAt  DateTime?
+  revokedAt   DateTime?
+  revokeReason String?  @db.VarChar(100)
+
+  createdAt   DateTime  @default(now())
+
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, expiresAt])
+  @@index([familyId])
+  @@index([revokedAt])
+}
+
+model AuditLog {
+  id         String   @id @default(cuid()) @db.VarChar(191)
+  actorId    String?  @db.VarChar(191)
+
+  action     String   @db.VarChar(150)
+  entityType String?  @db.VarChar(100)
+  entityId   String?  @db.VarChar(191)
+
+  ipAddress  String?  @db.VarChar(45)
+  userAgent  String?  @db.VarChar(500)
+  metadata   Json?
+
+  createdAt  DateTime @default(now())
+
+  actor      User?    @relation("AuditActor", fields: [actorId], references: [id], onDelete: SetNull)
+
+  @@index([actorId, createdAt])
+  @@index([action, createdAt])
+  @@index([entityType, entityId])
+}
