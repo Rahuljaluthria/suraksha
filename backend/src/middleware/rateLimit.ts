@@ -29,3 +29,18 @@ export const refreshRateLimiter = rateLimit({
   },
 });
 
+/**
+ * Rate limiter for incident creation and mutation endpoints.
+ */
+export const incidentMutationLimiter = rateLimit({
+  windowMs: 5 * 60 * 1000,
+  limit: 120,
+  standardHeaders: "draft-7",
+  legacyHeaders: false,
+  message: {
+    success: false,
+    message: "Too many incident operations. Please slow down.",
+  },
+});
+
+

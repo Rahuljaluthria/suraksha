@@ -4,6 +4,7 @@ import helmet from "helmet";
 import rateLimit from "express-rate-limit";
 import cookieParser from "cookie-parser";
 import authRoutes from "./modules/auth/auth.routes.js";
+import incidentRoutes from "./modules/incidents/incident.routes.js";
 
 const app = express();
 
@@ -44,5 +45,8 @@ app.get("/api/health", (_req, res) => {
 
 // Authentication routes
 app.use("/api/auth", authRoutes);
+
+// Incident management routes
+app.use("/api/incidents", incidentRoutes);
 
 export default app;

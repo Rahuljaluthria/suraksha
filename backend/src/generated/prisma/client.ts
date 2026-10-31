@@ -76,3 +76,23 @@ export type RefreshSession = Prisma.RefreshSessionModel
  * 
  */
 export type AuditLog = Prisma.AuditLogModel
+/**
+ * Model Incident
+ * 
+ */
+export type Incident = Prisma.IncidentModel
+/**
+ * Model IncidentAssignment
+ * 
+ */
+export type IncidentAssignment = Prisma.IncidentAssignmentModel
+/**
+ * Model IncidentHistory
+ * 
+ */
+export type IncidentHistory = Prisma.IncidentHistoryModel
+/**
+ * Model Investigation
+ * 
+ */
+export type Investigation = Prisma.InvestigationModel

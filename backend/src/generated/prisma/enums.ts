@@ -17,3 +17,40 @@ export const UserStatus = {
 } as const
 
 export type UserStatus = (typeof UserStatus)[keyof typeof UserStatus]
+
+
+export const IncidentSeverity = {
+  LOW: 'LOW',
+  MEDIUM: 'MEDIUM',
+  HIGH: 'HIGH',
+  CRITICAL: 'CRITICAL'
+} as const
+
+export type IncidentSeverity = (typeof IncidentSeverity)[keyof typeof IncidentSeverity]
+
+
+export const IncidentPriority = {
+  P1: 'P1',
+  P2: 'P2',
+  P3: 'P3',
+  P4: 'P4'
+} as const
+
+export type IncidentPriority = (typeof IncidentPriority)[keyof typeof IncidentPriority]
+
+
+export const IncidentStatus = {
+  NEW: 'NEW',
+  TRIAGED: 'TRIAGED',
+  ASSIGNED: 'ASSIGNED',
+  INVESTIGATING: 'INVESTIGATING',
+  REMEDIATING: 'REMEDIATING',
+  VERIFYING: 'VERIFYING',
+  RESOLVED: 'RESOLVED',
+  CLOSED: 'CLOSED',
+  REJECTED: 'REJECTED',
+  REOPENED: 'REOPENED',
+  ESCALATED: 'ESCALATED'
+} as const
+
+export type IncidentStatus = (typeof IncidentStatus)[keyof typeof IncidentStatus]

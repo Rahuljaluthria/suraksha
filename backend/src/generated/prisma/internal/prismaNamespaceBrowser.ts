@@ -57,7 +57,11 @@ export const ModelName = {
   Permission: 'Permission',
   RolePermission: 'RolePermission',
   RefreshSession: 'RefreshSession',
-  AuditLog: 'AuditLog'
+  AuditLog: 'AuditLog',
+  Incident: 'Incident',
+  IncidentAssignment: 'IncidentAssignment',
+  IncidentHistory: 'IncidentHistory',
+  Investigation: 'Investigation'
 } as const
 
 export type ModelName = (typeof ModelName)[keyof typeof ModelName]
@@ -166,6 +170,74 @@ export const AuditLogScalarFieldEnum = {
 } as const
 
 export type AuditLogScalarFieldEnum = (typeof AuditLogScalarFieldEnum)[keyof typeof AuditLogScalarFieldEnum]
+
+
+export const IncidentScalarFieldEnum = {
+  id: 'id',
+  incidentNumber: 'incidentNumber',
+  title: 'title',
+  description: 'description',
+  severity: 'severity',
+  priority: 'priority',
+  status: 'status',
+  category: 'category',
+  tags: 'tags',
+  reportedById: 'reportedById',
+  assignedToId: 'assignedToId',
+  resolvedAt: 'resolvedAt',
+  closedAt: 'closedAt',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type IncidentScalarFieldEnum = (typeof IncidentScalarFieldEnum)[keyof typeof IncidentScalarFieldEnum]
+
+
+export const IncidentAssignmentScalarFieldEnum = {
+  id: 'id',
+  incidentId: 'incidentId',
+  userId: 'userId',
+  role: 'role',
+  assignedById: 'assignedById',
+  isActive: 'isActive',
+  assignedAt: 'assignedAt',
+  unassignedAt: 'unassignedAt'
+} as const
+
+export type IncidentAssignmentScalarFieldEnum = (typeof IncidentAssignmentScalarFieldEnum)[keyof typeof IncidentAssignmentScalarFieldEnum]
+
+
+export const IncidentHistoryScalarFieldEnum = {
+  id: 'id',
+  incidentId: 'incidentId',
+  actorId: 'actorId',
+  action: 'action',
+  fromStatus: 'fromStatus',
+  toStatus: 'toStatus',
+  notes: 'notes',
+  metadata: 'metadata',
+  createdAt: 'createdAt'
+} as const
+
+export type IncidentHistoryScalarFieldEnum = (typeof IncidentHistoryScalarFieldEnum)[keyof typeof IncidentHistoryScalarFieldEnum]
+
+
+export const InvestigationScalarFieldEnum = {
+  id: 'id',
+  incidentId: 'incidentId',
+  leadId: 'leadId',
+  summary: 'summary',
+  hypotheses: 'hypotheses',
+  findings: 'findings',
+  rootCause: 'rootCause',
+  status: 'status',
+  startedAt: 'startedAt',
+  concludedAt: 'concludedAt',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type InvestigationScalarFieldEnum = (typeof InvestigationScalarFieldEnum)[keyof typeof InvestigationScalarFieldEnum]
 
 
 export const SortOrder = {
@@ -279,4 +351,52 @@ export const AuditLogOrderByRelevanceFieldEnum = {
 } as const
 
 export type AuditLogOrderByRelevanceFieldEnum = (typeof AuditLogOrderByRelevanceFieldEnum)[keyof typeof AuditLogOrderByRelevanceFieldEnum]
+
+
+export const IncidentOrderByRelevanceFieldEnum = {
+  id: 'id',
+  incidentNumber: 'incidentNumber',
+  title: 'title',
+  description: 'description',
+  category: 'category',
+  reportedById: 'reportedById',
+  assignedToId: 'assignedToId'
+} as const
+
+export type IncidentOrderByRelevanceFieldEnum = (typeof IncidentOrderByRelevanceFieldEnum)[keyof typeof IncidentOrderByRelevanceFieldEnum]
+
+
+export const IncidentAssignmentOrderByRelevanceFieldEnum = {
+  id: 'id',
+  incidentId: 'incidentId',
+  userId: 'userId',
+  role: 'role',
+  assignedById: 'assignedById'
+} as const
+
+export type IncidentAssignmentOrderByRelevanceFieldEnum = (typeof IncidentAssignmentOrderByRelevanceFieldEnum)[keyof typeof IncidentAssignmentOrderByRelevanceFieldEnum]
+
+
+export const IncidentHistoryOrderByRelevanceFieldEnum = {
+  id: 'id',
+  incidentId: 'incidentId',
+  actorId: 'actorId',
+  action: 'action',
+  notes: 'notes'
+} as const
+
+export type IncidentHistoryOrderByRelevanceFieldEnum = (typeof IncidentHistoryOrderByRelevanceFieldEnum)[keyof typeof IncidentHistoryOrderByRelevanceFieldEnum]
+
+
+export const InvestigationOrderByRelevanceFieldEnum = {
+  id: 'id',
+  incidentId: 'incidentId',
+  leadId: 'leadId',
+  summary: 'summary',
+  findings: 'findings',
+  rootCause: 'rootCause',
+  status: 'status'
+} as const
+
+export type InvestigationOrderByRelevanceFieldEnum = (typeof InvestigationOrderByRelevanceFieldEnum)[keyof typeof InvestigationOrderByRelevanceFieldEnum]
 

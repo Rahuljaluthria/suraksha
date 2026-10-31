@@ -36,6 +36,13 @@ model User {
   refreshSessions     RefreshSession[]
   auditLogs           AuditLog[] @relation("AuditActor")
 
+  reportedIncidents       Incident[]           @relation("ReportedIncidents")
+  assignedIncidents       Incident[]           @relation("AssignedIncidents")
+  incidentAssignments     IncidentAssignment[] @relation("UserAssignments")
+  assignedByAssignments   IncidentAssignment[] @relation("AssignerAssignments")
+  incidentHistoryActions IncidentHistory[]    @relation("HistoryActor")
+  ledInvestigations       Investigation[]      @relation("InvestigationLead")
+
   @@index([status])
   @@index([createdAt])
 }
@@ -131,4 +138,122 @@ model AuditLog {
   @@index([actorId, createdAt])
   @@index([action, createdAt])
   @@index([entityType, entityId])
+}
+
+enum IncidentSeverity {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum IncidentPriority {
+  P1
+  P2
+  P3
+  P4
+}
+
+enum IncidentStatus {
+  NEW
+  TRIAGED
+  ASSIGNED
+  INVESTIGATING
+  REMEDIATING
+  VERIFYING
+  RESOLVED
+  CLOSED
+  REJECTED
+  REOPENED
+  ESCALATED
+}
+
+model Incident {
+  id             String           @id @default(cuid()) @db.VarChar(191)
+  incidentNumber String           @unique @db.VarChar(50)
+  title          String           @db.VarChar(255)
+  description    String           @db.Text
+  severity       IncidentSeverity @default(MEDIUM)
+  priority       IncidentPriority @default(P3)
+  status         IncidentStatus   @default(NEW)
+  category       String           @db.VarChar(100)
+  tags           Json?
+
+  reportedById   String           @db.VarChar(191)
+  assignedToId   String?          @db.VarChar(191)
+
+  resolvedAt     DateTime?
+  closedAt       DateTime?
+
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+
+  reportedBy     User             @relation("ReportedIncidents", fields: [reportedById], references: [id])
+  assignedTo     User?            @relation("AssignedIncidents", fields: [assignedToId], references: [id], onDelete: SetNull)
+
+  assignments    IncidentAssignment[]
+  history        IncidentHistory[]
+  investigation  Investigation?
+
+  @@index([status])
+  @@index([severity])
+  @@index([priority])
+  @@index([reportedById])
+  @@index([assignedToId])
+  @@index([createdAt])
+  @@index([category])
+}
+
+model IncidentAssignment {
+  id           String    @id @default(cuid()) @db.VarChar(191)
+  incidentId   String    @db.VarChar(191)
+  userId       String    @db.VarChar(191)
+  role         String    @default("PRIMARY_RESPONDER") @db.VarChar(50)
+  assignedById String?   @db.VarChar(191)
+  isActive     Boolean   @default(true)
+  assignedAt   DateTime  @default(now())
+  unassignedAt DateTime?
+
+  incident     Incident  @relation(fields: [incidentId], references: [id], onDelete: Cascade)
+  user         User      @relation("UserAssignments", fields: [userId], references: [id], onDelete: Cascade)
+  assignedBy   User?     @relation("AssignerAssignments", fields: [assignedById], references: [id], onDelete: SetNull)
+
+  @@index([incidentId, isActive])
+  @@index([userId, isActive])
+}
+
+model IncidentHistory {
+  id         String          @id @default(cuid()) @db.VarChar(191)
+  incidentId String          @db.VarChar(191)
+  actorId    String?         @db.VarChar(191)
+  action     String          @db.VarChar(100)
+  fromStatus IncidentStatus?
+  toStatus   IncidentStatus?
+  notes      String?         @db.Text
+  metadata   Json?
+  createdAt  DateTime        @default(now())
+
+  incident   Incident        @relation(fields: [incidentId], references: [id], onDelete: Cascade)
+  actor      User?           @relation("HistoryActor", fields: [actorId], references: [id], onDelete: SetNull)
+
+  @@index([incidentId, createdAt])
+  @@index([actorId])
+}
+
+model Investigation {
+  id          String    @id @default(cuid()) @db.VarChar(191)
+  incidentId  String    @unique @db.VarChar(191)
+  leadId      String?   @db.VarChar(191)
+  summary     String?   @db.Text
+  hypotheses  Json?
+  findings    String?   @db.Text
+  rootCause   String?   @db.Text
+  status      String    @default("OPEN") @db.VarChar(50)
+  startedAt   DateTime  @default(now())
+  concludedAt DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  incident    Incident  @relation(fields: [incidentId], references: [id], onDelete: Cascade)
+  lead        User?     @relation("InvestigationLead", fields: [leadId], references: [id], onDelete: SetNull)
 }
