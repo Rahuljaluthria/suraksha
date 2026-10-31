@@ -1,29 +1,56 @@
-import { createBrowserRouter } from "react-router-dom"
-import { AppLayout } from "@/components/layout/AppLayout"
-import { Button } from "@/components/ui/button"
+import { createBrowserRouter, Navigate } from "react-router-dom";
+import { AppLayout } from "@/components/layout/AppLayout";
+import { LoginPage } from "@/pages/auth/LoginPage";
+import { RegisterPage } from "@/pages/auth/RegisterPage";
+import { DashboardPage } from "@/pages/dashboard/DashboardPage";
+import { AdminUsersPage } from "@/pages/admin/AdminUsersPage";
+import { ProtectedRoute } from "./ProtectedRoute";
+import { RoleGuard } from "./RoleGuard";
 
 export const router = createBrowserRouter([
+  // Public auth routes
   {
-    path: "/",
-    element: <AppLayout />,
+    path: "/login",
+    element: <LoginPage />,
+  },
+  {
+    path: "/register",
+    element: <RegisterPage />,
+  },
+
+  // Protected application routes
+  {
+    element: <ProtectedRoute />,
     children: [
       {
-        // Temporary index route used to verify the foundation; replaced in Phase 2.
-        index: true,
-        element: (
-          <div className="flex max-w-md flex-col gap-3">
-            <h1 className="text-lg font-semibold">Foundation ready</h1>
-            <p className="text-sm text-muted-foreground">
-              Dark theme, teal accent, Geist, routing and shared layout are wired.
-            </p>
-            <div className="flex gap-2">
-              <Button>Primary</Button>
-              <Button variant="outline">Outline</Button>
-              <Button variant="destructive">Destructive</Button>
-            </div>
-          </div>
-        ),
+        element: <AppLayout />,
+        children: [
+          {
+            path: "/",
+            element: <Navigate to="/dashboard" replace />,
+          },
+          {
+            path: "/dashboard",
+            element: <DashboardPage />,
+          },
+          // Role-protected routes: Admin Console
+          {
+            element: <RoleGuard allowedRoles={["ADMIN"]} />,
+            children: [
+              {
+                path: "/admin/users",
+                element: <AdminUsersPage />,
+              },
+            ],
+          },
+        ],
       },
     ],
   },
-])
+
+  // Fallback
+  {
+    path: "*",
+    element: <Navigate to="/dashboard" replace />,
+  },
+]);

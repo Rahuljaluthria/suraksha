@@ -1,16 +1,70 @@
-import { Outlet } from "react-router-dom"
-import { ShieldCheck } from "lucide-react"
+import { Outlet, Link, useNavigate } from "react-router-dom";
+import { ShieldCheck, LogOut } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { useAppDispatch, useAppSelector } from "@/app/hooks";
+import { logoutUser } from "@/features/auth/authSlice";
+import { Toaster, toast } from "sonner";
 
 export function AppLayout() {
+  const dispatch = useAppDispatch();
+  const navigate = useNavigate();
+  const { user, isAuthenticated } = useAppSelector((state) => state.auth);
+
+  const handleLogout = async () => {
+    await dispatch(logoutUser());
+    toast.info("Logged out successfully");
+    navigate("/login", { replace: true });
+  };
+
   return (
-    <div className="flex min-h-svh flex-col">
-      <header className="flex h-12 shrink-0 items-center gap-2 border-b bg-sidebar px-4">
-        <ShieldCheck className="size-5 text-primary" aria-hidden="true" />
-        <span className="text-sm font-semibold tracking-tight">Suraksha</span>
+    <div className="flex min-h-svh flex-col bg-background text-foreground">
+      <header className="flex h-14 shrink-0 items-center justify-between border-b border-border bg-sidebar px-4 md:px-6">
+        <Link to="/dashboard" className="flex items-center gap-2.5 transition-opacity hover:opacity-90">
+          <div className="flex size-7 items-center justify-center rounded-lg bg-primary/10 border border-primary/20 text-primary">
+            <ShieldCheck className="size-4" aria-hidden="true" />
+          </div>
+          <span className="text-sm font-semibold tracking-tight text-foreground">Suraksha</span>
+          <span className="text-[10px] font-mono px-1.5 py-0.5 rounded-md bg-muted text-muted-foreground border border-border">
+            SOC v1.0
+          </span>
+        </Link>
+
+        {isAuthenticated && user && (
+          <div className="flex items-center gap-3">
+            <div className="hidden sm:flex flex-col items-end">
+              <span className="text-xs font-medium text-foreground">
+                {user.firstName} {user.lastName}
+              </span>
+              <div className="flex items-center gap-1">
+                <span className="text-[10px] font-mono text-primary font-medium">
+                  {user.roles[0]}
+                </span>
+                {user.roles.length > 1 && (
+                  <span className="text-[10px] font-mono text-muted-foreground">
+                    +{user.roles.length - 1}
+                  </span>
+                )}
+              </div>
+            </div>
+
+            <Button
+              variant="outline"
+              size="xs"
+              onClick={handleLogout}
+              className="gap-1.5 text-xs text-muted-foreground hover:text-destructive hover:border-destructive/40"
+            >
+              <LogOut className="size-3.5" />
+              <span className="hidden sm:inline">Sign Out</span>
+            </Button>
+          </div>
+        )}
       </header>
-      <main className="flex-1 p-6">
+
+      <main className="flex-1 p-4 md:p-6 max-w-6xl w-full mx-auto">
         <Outlet />
       </main>
+
+      <Toaster richColors theme="dark" position="top-right" />
     </div>
-  )
+  );
 }
