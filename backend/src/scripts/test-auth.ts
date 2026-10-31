@@ -308,6 +308,8 @@ async function runTests(): Promise<void> {
   })
     .setProtectedHeader({ alg: "HS256" })
     .setSubject(registerResult.user.id)
+    .setIssuer(env.JWT_ISSUER)
+    .setAudience(env.JWT_AUDIENCE)
     .setIssuedAt(Math.floor(Date.now() / 1000) - 3600)
     .setExpirationTime(Math.floor(Date.now() / 1000) - 1800) // 30 minutes in the past
     .sign(secretKey);

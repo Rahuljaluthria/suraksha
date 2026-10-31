@@ -10,6 +10,8 @@ export const env = {
   JWT_ACCESS_SECRET:
     process.env.JWT_ACCESS_SECRET || "suraksha-super-secret-access-token-key-change-in-production-min32chars",
   JWT_ACCESS_EXPIRY: process.env.JWT_ACCESS_EXPIRY || "15m",
+  JWT_ISSUER: process.env.JWT_ISSUER || "suraksha-api",
+  JWT_AUDIENCE: process.env.JWT_AUDIENCE || "suraksha-client",
 
   // Refresh token configuration
   REFRESH_TOKEN_EXPIRY_DAYS: Number(process.env.REFRESH_TOKEN_EXPIRY_DAYS) || 7,
@@ -22,4 +24,3 @@ export const env = {
   // Whether public registration requires email verification before login
   REQUIRE_EMAIL_VERIFICATION: process.env.REQUIRE_EMAIL_VERIFICATION === "true",
 };
-

@@ -13,7 +13,7 @@ export interface AccessTokenPayload extends JWTPayload {
 const secretKey = new TextEncoder().encode(env.JWT_ACCESS_SECRET);
 
 /**
- * Signs and generates a short-lived JWT access token using jose.
+ * Signs and generates a short-lived JWT access token using jose with issuer and audience.
  */
 export async function createAccessToken(params: {
   userId: string;
@@ -29,18 +29,22 @@ export async function createAccessToken(params: {
   })
     .setProtectedHeader({ alg: "HS256" })
     .setSubject(params.userId)
+    .setIssuer(env.JWT_ISSUER)
+    .setAudience(env.JWT_AUDIENCE)
     .setIssuedAt()
     .setExpirationTime(env.JWT_ACCESS_EXPIRY)
     .sign(secretKey);
 }
 
 /**
- * Verifies a JWT access token using jose.
- * Throws an error if invalid or expired.
+ * Verifies a JWT access token using jose, validating signature, issuer, audience, and expiry.
+ * Throws an error if invalid, forged, or expired.
  */
 export async function verifyAccessToken(token: string): Promise<AccessTokenPayload> {
   const { payload } = await jwtVerify(token, secretKey, {
     algorithms: ["HS256"],
+    issuer: env.JWT_ISSUER,
+    audience: env.JWT_AUDIENCE,
   });
 
   if (payload.tokenType !== "access" || !payload.sub) {
@@ -70,4 +74,3 @@ export function hashRefreshToken(rawToken: string): string {
 export function generateFamilyId(): string {
   return crypto.randomUUID();
 }
-

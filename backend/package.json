@@ -13,7 +13,8 @@
     "db:seed": "tsx src/scripts/seed.ts",
     "db:verify-rbac": "tsx src/scripts/verify-rbac.ts",
     "kafka:check": "tsx src/scripts/check-kafka.ts",
-    "test:auth": "tsx src/scripts/test-auth.ts"
+    "test:auth": "tsx src/scripts/test-auth.ts",
+    "test:rbac": "tsx src/scripts/test-rbac.ts"
   },
   "keywords": [],
   "author": "",
