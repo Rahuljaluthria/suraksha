@@ -10,6 +10,8 @@
     "start": "node dist/server.js",
     "typecheck": "tsc --noEmit",
     "db:check": "tsx src/scripts/check-db.ts",
+    "db:seed": "tsx src/scripts/seed.ts",
+    "db:verify-rbac": "tsx src/scripts/verify-rbac.ts",
     "kafka:check": "tsx src/scripts/check-kafka.ts"
   },
   "keywords": [],
