@@ -1,10 +1,12 @@
 import { configureStore } from "@reduxjs/toolkit";
 import authReducer, { clearCredentials } from "@/features/auth/authSlice";
+import incidentReducer from "@/features/incidents/incidentSlice";
 import { setOnSessionExpired } from "@/services/api";
 
 export const store = configureStore({
   reducer: {
     auth: authReducer,
+    incidents: incidentReducer,
   },
   devTools: import.meta.env.DEV,
 });

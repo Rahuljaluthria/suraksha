@@ -6,6 +6,7 @@ import {
   updateIncident,
   changeIncidentStatus,
   assignIncident,
+  getActiveResponders,
   IncidentNotFoundError,
   ForbiddenOperationError,
   InvalidTransitionError,
@@ -178,6 +179,20 @@ export async function assignIncidentHandler(req: Request, res: Response): Promis
       success: true,
       message: "Incident assigned successfully",
       data: updated,
+    });
+  } catch (error) {
+    handleError(error, res);
+  }
+}
+
+
+export async function getRespondersHandler(_req: Request, res: Response): Promise<void> {
+  try {
+    const responders = await getActiveResponders();
+
+    res.status(200).json({
+      success: true,
+      data: responders,
     });
   } catch (error) {
     handleError(error, res);

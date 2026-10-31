@@ -4,6 +4,9 @@ import { LoginPage } from "@/pages/auth/LoginPage";
 import { RegisterPage } from "@/pages/auth/RegisterPage";
 import { DashboardPage } from "@/pages/dashboard/DashboardPage";
 import { AdminUsersPage } from "@/pages/admin/AdminUsersPage";
+import { IncidentListPage } from "@/pages/incidents/IncidentListPage";
+import { ReportIncidentPage } from "@/pages/incidents/ReportIncidentPage";
+import { IncidentDetailPage } from "@/pages/incidents/IncidentDetailPage";
 import { ProtectedRoute } from "./ProtectedRoute";
 import { RoleGuard } from "./RoleGuard";
 
@@ -32,6 +35,18 @@ export const router = createBrowserRouter([
           {
             path: "/dashboard",
             element: <DashboardPage />,
+          },
+          {
+            path: "/incidents",
+            element: <IncidentListPage />,
+          },
+          {
+            path: "/incidents/report",
+            element: <ReportIncidentPage />,
+          },
+          {
+            path: "/incidents/:id",
+            element: <IncidentDetailPage />,
           },
           // Role-protected routes: Admin Console
           {

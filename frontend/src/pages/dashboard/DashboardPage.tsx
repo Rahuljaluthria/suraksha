@@ -55,15 +55,24 @@ export function DashboardPage() {
         <div className="rounded-xl border border-border bg-card p-5 space-y-3">
           <div className="flex items-center gap-2 text-foreground font-medium text-sm">
             <AlertTriangle className="size-4 text-primary" />
-            Incident Reporting
+            Incident Management
           </div>
           <p className="text-xs text-muted-foreground leading-relaxed">
-            Report anomalous security behavior, breach alerts, and system warnings directly to the SOC.
+            Report anomalous security behavior, breach alerts, and track ongoing incident investigations.
           </p>
-          <div className="pt-2">
-            <Button size="sm" variant="outline" className="w-full justify-start text-xs">
-              + Report Incident
-            </Button>
+          <div className="pt-2 flex items-center gap-2">
+            <Link
+              to="/incidents"
+              className={cn(buttonVariants({ size: "sm", variant: "default" }), "text-xs flex-1")}
+            >
+              Incident Queue
+            </Link>
+            <Link
+              to="/incidents/report"
+              className={cn(buttonVariants({ size: "sm", variant: "outline" }), "text-xs")}
+            >
+              + Report
+            </Link>
           </div>
         </div>
 

@@ -832,3 +832,51 @@ export async function assignIncident(
   return updatedIncident;
 }
 
+
+
+/**
+ * Retrieves the list of active users eligible for incident response assignments.
+ */
+export async function getActiveResponders() {
+  const responderRoles = [
+    "INVESTIGATOR",
+    "SECURITY_ENGINEER",
+    "INCIDENT_COMMANDER",
+    "SECURITY_ANALYST",
+  ];
+
+  const users = await prisma.user.findMany({
+    where: {
+      status: "ACTIVE",
+      roles: {
+        some: {
+          role: {
+            code: { in: responderRoles },
+          },
+        },
+      },
+    },
+    select: {
+      id: true,
+      email: true,
+      firstName: true,
+      lastName: true,
+      roles: {
+        select: {
+          role: {
+            select: { code: true, name: true },
+          },
+        },
+      },
+    },
+    orderBy: { firstName: "asc" },
+  });
+
+  return users.map((u) => ({
+    id: u.id,
+    email: u.email,
+    firstName: u.firstName,
+    lastName: u.lastName,
+    roles: u.roles.map((r) => r.role.code),
+  }));
+}

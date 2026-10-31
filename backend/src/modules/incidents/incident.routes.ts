@@ -17,6 +17,7 @@ import {
   updateIncidentHandler,
   changeStatusHandler,
   assignIncidentHandler,
+  getRespondersHandler,
 } from "./incident.controller.js";
 
 const router = Router();
@@ -45,6 +46,16 @@ router.get(
   requirePermission("incident:read:all", "incident:read:assigned", "incident:read:own"),
   validateQuery(queryIncidentsSchema),
   listIncidentsHandler
+);
+
+/**
+ * GET /api/incidents/responders
+ * Retrieve list of active users with responder roles for assignment lookup.
+ */
+router.get(
+  "/responders",
+  requirePermission("incident:assign", "incident:read:all"),
+  getRespondersHandler
 );
 
 /**
