@@ -43,3 +43,10 @@ Thumbs.db
 # Docker
 docker-compose.override.yml
 
+# Docker environment
+.env.*
+!.env.example
+
+# Infrastructure data
+data/
+
