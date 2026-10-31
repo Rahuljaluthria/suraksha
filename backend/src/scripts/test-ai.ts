@@ -30,6 +30,7 @@ import {
   DeepSeekClient,
   getLlmProvider,
   isAiConfigured,
+  isSafeBaseUrl,
   setLlmProviderForTests,
 } from "../modules/ai/providers/deepseek.client.js";
 import type { LlmProvider, LlmRequest, LlmResponse } from "../modules/ai/providers/llmProvider.js";
@@ -962,6 +963,86 @@ async function run(): Promise<void> {
   assert(
     !/Hunter2Pass|WS-04|203\.0\.113\.9|jane\.doe|Isolate/.test(JSON.stringify(remAudits.map((r) => r.metadata))),
     "17.19 audit metadata contains none of the incident or recommendation text"
+  );
+  setLlmProviderForTests(null);
+
+  // ---------------------------------------------------------------
+  console.log("\n--- Suite 18: Hardening ---");
+  const timed = (fn: () => void) => {
+    const start = performance.now();
+    fn();
+    return performance.now() - start;
+  };
+  const adversarial = ["a.".repeat(40_000), "a+".repeat(40_000), "1-".repeat(40_000), "-----BEGIN RSA PRIVATE KEY-----".repeat(2_500)];
+  assert(
+    adversarial.every((input) => timed(() => redactText(input, "all")) < 750),
+    "18.1 redaction stays fast on 80k-character adversarial input (no quadratic regex)"
+  );
+
+  const specificsSource = "WS-04 contacted corp.example after the user opened invoice.docm. See SHA-256 notes.";
+  const flagged = findUnsupportedSpecifics(
+    ["Also check WS-05 and DB-PROD-01, which talked to evil-site.com, per SHA-256, AES-256 and COVID-19 guidance, and WS-04."],
+    specificsSource
+  );
+  assert(
+    flagged.includes("WS-05") && flagged.includes("DB-PROD-01") && flagged.includes("evil-site.com") && flagged.length === 3,
+    "18.2 invented hostnames and domains are flagged; standards names and known hosts are not"
+  );
+
+  const savedTimeout = env.AI_TIMEOUT_MS;
+  env.AI_TIMEOUT_MS = 40;
+  const slowInvalid: LlmProvider & { calls: number } = {
+    name: "slow-invalid",
+    calls: 0,
+    async complete() {
+      this.calls++;
+      await new Promise((resolve) => setTimeout(resolve, 60));
+      return reply("not json");
+    },
+  };
+  const budgetErr = await rejectsWith(
+    () => generateStructured({ system: "s", user: "u", schema, maxTokens: 10, provider: slowInvalid }),
+    AiInvalidResponseError
+  );
+  env.AI_TIMEOUT_MS = savedTimeout;
+  assert(budgetErr !== null && slowInvalid.calls === 1, "18.3 a slow first attempt skips the repair call instead of doubling the wait");
+
+  assert(
+    isSafeBaseUrl("https://api.deepseek.com") && isSafeBaseUrl("http://127.0.0.1:5598") && isSafeBaseUrl("http://localhost:1") &&
+      !isSafeBaseUrl("http://api.deepseek.com") && !isSafeBaseUrl("ftp://api.deepseek.com") && !isSafeBaseUrl("not a url"),
+    "18.4 the API base URL must be https (http only for loopback)"
+  );
+  const savedBase = env.DEEPSEEK_BASE_URL;
+  env.DEEPSEEK_API_KEY = "sk-placeholder";
+  env.DEEPSEEK_BASE_URL = "http://api.example.com";
+  const insecureConfigured = isAiConfigured();
+  env.DEEPSEEK_BASE_URL = "https://api.example.com";
+  const secureConfigured = isAiConfigured();
+  env.DEEPSEEK_BASE_URL = savedBase;
+  env.DEEPSEEK_API_KEY = savedKey;
+  assert(!insecureConfigured && secureConfigured, "18.5 an insecure base URL disables AI so the key is never sent in clear text");
+
+  const longId = "x".repeat(300);
+  setLlmProviderForTests((provider = fakeProvider([reply("{}")])));
+  const longIdRes = await post(analysisUrl(longId), {}, analyst.token);
+  const longIdAudit = await prisma.auditLog.findFirst({
+    where: { actorId: analyst.id, action: "AI_INCIDENT_ANALYSIS", entityId: "x".repeat(191) },
+  });
+  assert(
+    longIdRes.status === 404 && provider.calls.length === 0 && longIdAudit !== null,
+    "18.6 an over-long incident id is a clean 404, never reaches the provider and is still audited"
+  );
+
+  const hostile = remediationModel();
+  (hostile as Record<string, unknown>).autoExecute = true;
+  (hostile.recommendations[1] as Record<string, unknown>).executeNow = true;
+  (hostile.recommendations[1] as Record<string, unknown>).command = "rm -rf /";
+  setLlmProviderForTests(fakeProvider([reply(JSON.stringify(hostile))]));
+  const hostileRes = await post(remUrl(incident.id), {}, analyst.token);
+  const hostileJson = JSON.stringify(hostileRes.data);
+  assert(
+    hostileRes.status === 200 && !/autoExecute|executeNow|rm -rf/.test(hostileJson),
+    "18.7 unknown fields a model adds (autoExecute, executeNow, command) never reach the client"
   );
   setLlmProviderForTests(null);
 

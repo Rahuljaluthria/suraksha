@@ -115,7 +115,7 @@ export async function runRemediation(prepared: PreparedRemediation): Promise<Rem
   const withUnverified = recommendations.filter((r) => r.unverifiedDetails.length > 0).length;
   if (withUnverified > 0) {
     warnings.push(
-      `${withUnverified} recommendation(s) mention IP addresses, hashes, URLs or CVEs that are not in the incident record. Check them before acting.`
+      `${withUnverified} recommendation(s) mention IP addresses, hostnames, domains, hashes, URLs or CVEs that are not in the incident record. Check them before acting.`
     );
   }
   const maskedValueCount = Object.entries(redaction.counts).reduce(

@@ -127,8 +127,33 @@ export function setLlmProviderForTests(provider: LlmProvider | null): void {
   overrideProvider = provider;
 }
 
+/**
+ * The API key travels in a header, so the endpoint must use TLS. Plain http is only
+ * accepted for loopback addresses (local mocks and tests).
+ */
+export function isSafeBaseUrl(baseUrl: string): boolean {
+  try {
+    const url = new URL(baseUrl);
+    if (url.protocol === "https:") return true;
+    return url.protocol === "http:" && ["localhost", "127.0.0.1", "[::1]"].includes(url.hostname);
+  } catch {
+    return false;
+  }
+}
+
+let warnedUnsafeBaseUrl = false;
+
 export function isAiConfigured(): boolean {
-  return overrideProvider !== null || (env.AI_ENABLED && env.DEEPSEEK_API_KEY.length > 0);
+  if (overrideProvider !== null) return true;
+  if (!env.AI_ENABLED || env.DEEPSEEK_API_KEY.length === 0) return false;
+  if (!isSafeBaseUrl(env.DEEPSEEK_BASE_URL)) {
+    if (!warnedUnsafeBaseUrl) {
+      warnedUnsafeBaseUrl = true;
+      console.warn("[AI] DEEPSEEK_BASE_URL must use https (http is allowed only for localhost). AI is disabled.");
+    }
+    return false;
+  }
+  return true;
 }
 
 export function getLlmProvider(): LlmProvider {

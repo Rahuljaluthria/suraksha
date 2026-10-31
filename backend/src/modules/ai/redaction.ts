@@ -104,7 +104,7 @@ export function redactText(input: string, ipMode: IpMaskMode = "none"): Redactio
   );
 
   // Credentials embedded in URLs: scheme://user:pass@host
-  text = text.replace(/\b([a-z][a-z0-9+.-]*:\/\/)([^\s/:@]+):([^\s/@]+)@/gi, (_m, scheme, _u, pass) =>
+  text = text.replace(/\b([a-z][a-z0-9+.-]{0,31}:\/\/)([^\s/:@]{1,256}):([^\s/@]{1,256})@/gi, (_m, scheme, _u, pass) =>
     `${scheme}${placeholder("SECRET", pass)}@`
   );
 
@@ -128,7 +128,9 @@ export function redactText(input: string, ipMode: IpMaskMode = "none"): Redactio
   text = text.replace(/\b[A-Z]{5}\d{4}[A-Z]\b/g, (m) => placeholder("GOV_ID", m));
 
   // Email addresses
-  text = text.replace(/\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b/g, (m) =>
+  // Quantifiers are bounded (RFC 5321 limits) so long runs of word characters cannot make this
+  // scan quadratic, which an attacker could otherwise use to stall the event loop.
+  text = text.replace(/\b[A-Za-z0-9._%+-]{1,64}@[A-Za-z0-9.-]{1,255}\.[A-Za-z]{2,24}\b/g, (m) =>
     placeholder("EMAIL", m.toLowerCase(), m)
   );
 

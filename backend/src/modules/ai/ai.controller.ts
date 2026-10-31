@@ -54,16 +54,19 @@ export function handleAiError(error: unknown, res: Response): void {
  */
 export async function reportDraftHandler(req: Request, res: Response): Promise<void> {
   const { description } = req.body as ReportDraftRequest;
-  const prepared = prepareReportDraft(description);
   const auditBase = {
     req,
     feature: "REPORT_DRAFT" as const,
     promptVersion: REPORT_DRAFT_PROMPT_VERSION,
-    inputChars: prepared.inputChars,
-    redactions: prepared.redaction.counts,
+    inputChars: description.length,
+    redactions: {},
   };
 
   try {
+    // Inside the try so that a failure while redacting is audited and answered with a clean 500
+    // instead of reaching the framework's default error page.
+    const prepared = prepareReportDraft(description);
+    auditBase.redactions = prepared.redaction.counts;
     const { response, callMeta } = await runReportDraft(prepared);
     await auditAiCall({ ...auditBase, meta: callMeta });
     res.status(200).json({ success: true, data: response });
@@ -89,13 +92,18 @@ async function handleIncidentAiRequest(
     req,
     feature: feature.name,
     promptVersion: feature.promptVersion,
-    incidentId,
+    // audit_log.entityId is VarChar(191); never let a hostile path segment break the audit write.
+    incidentId: incidentId.slice(0, 191),
   };
 
   let inputChars = 0;
   let redactions = {};
 
   try {
+    if (incidentId.length === 0 || incidentId.length > 191) {
+      throw new IncidentNotFoundError();
+    }
+
     // Throws IncidentNotFoundError / ForbiddenOperationError exactly as GET /incidents/:id would.
     const incident = await getIncidentById(req.user!, incidentId);
     const prepared = prepareIncidentContext(incident, env.AI_MASK_IPS);

@@ -50,6 +50,7 @@ export async function generateStructured<S extends ZodType>(
   }
 
   activeCalls++;
+  const startedAt = Date.now();
   try {
     const messages: LlmMessage[] = [
       { role: "system", content: options.system },
@@ -109,6 +110,10 @@ export async function generateStructured<S extends ZodType>(
           problem = `The previous JSON did not match the required schema (${issues}). Return corrected JSON only.`;
         }
       }
+
+      // A slow first attempt leaves no safe time budget for a second call (the browser gives up
+      // after ~70s), so fail now instead of spending more of the user's time and the provider's cost.
+      if (Date.now() - startedAt > env.AI_TIMEOUT_MS / 2) break;
 
       messages.push(
         { role: "assistant", content: response.content.slice(0, 2000) },

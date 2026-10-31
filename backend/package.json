@@ -17,7 +17,8 @@
     "test:rbac": "tsx src/scripts/test-rbac.ts",
     "test:frontend-auth": "tsx src/scripts/test-frontend-auth.ts",
     "test:incidents": "tsx src/scripts/test-incidents.ts",
-    "test:ai": "tsx src/scripts/test-ai.ts"
+    "test:ai": "tsx src/scripts/test-ai.ts",
+    "ai:smoke": "tsx src/scripts/ai-smoke.ts"
   },
   "keywords": [],
   "author": "",
