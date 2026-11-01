@@ -19,7 +19,8 @@
     "test:incidents": "tsx src/scripts/test-incidents.ts",
     "test:ai": "tsx src/scripts/test-ai.ts",
     "ai:smoke": "tsx src/scripts/ai-smoke.ts",
-    "test:kafka-pipeline": "tsx src/scripts/test-kafka-pipeline.ts"
+    "test:kafka-pipeline": "tsx src/scripts/test-kafka-pipeline.ts",
+    "test:cache-benchmark": "tsx src/scripts/test-cache-benchmark.ts"
   },
   "keywords": [],
   "author": "",

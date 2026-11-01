@@ -18,6 +18,7 @@ import {
   changeStatusHandler,
   assignIncidentHandler,
   getRespondersHandler,
+  getIncidentStatsHandler,
 } from "./incident.controller.js";
 
 const router = Router();
@@ -56,6 +57,16 @@ router.get(
   "/responders",
   requirePermission("incident:assign", "incident:read:all"),
   getRespondersHandler
+);
+
+/**
+ * GET /api/incidents/stats
+ * Retrieve cached dashboard statistics scoped to user's permissions.
+ */
+router.get(
+  "/stats",
+  requirePermission("incident:read:all", "incident:read:assigned", "incident:read:own"),
+  getIncidentStatsHandler
 );
 
 /**

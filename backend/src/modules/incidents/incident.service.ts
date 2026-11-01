@@ -11,6 +11,7 @@ import { createAuditLog } from "../../utils/audit.js";
 import crypto from "node:crypto";
 import { publishIncidentEvent } from "../../services/incidentEvent.service.js";
 import { stageOutboxEvent, triggerOutboxDispatch } from "../../services/outbox.service.js";
+import { getOrSet, deleteCache, deleteCacheByPattern } from "../../services/cache.service.js";
 import { EVENT_VERSION, TOPICS } from "../../events/eventTypes.js";
 import type {
   CreateIncidentInput,
@@ -113,6 +114,22 @@ export interface RequestMeta {
  * Creates a new incident.
  * Enforces `incident:create` permission and starts in `NEW` status.
  */
+/**
+ * Invalidates cached incident listings, dashboard statistics, and specific detail records.
+ */
+export async function invalidateIncidentCache(incidentId?: string): Promise<void> {
+  const promises: Promise<unknown>[] = [
+    deleteCacheByPattern("incident:list:*"),
+    deleteCacheByPattern("incident:stats:*"),
+  ];
+
+  if (incidentId) {
+    promises.push(deleteCache(`incident:detail:${incidentId}`));
+  }
+
+  await Promise.allSettled(promises);
+}
+
 export async function createIncident(
   user: AuthenticatedUser,
   input: CreateIncidentInput,
@@ -204,6 +221,8 @@ export async function createIncident(
 
   triggerOutboxDispatch();
 
+  void invalidateIncidentCache();
+
   // Publish to Kafka topic asynchronously (non-blocking)
   await publishIncidentEvent({
     eventType: "INCIDENT_CREATED",
@@ -293,88 +312,121 @@ export async function listIncidents(
   const limit = query.limit ?? 20;
   const skip = (page - 1) * limit;
 
-  const [total, incidents] = await Promise.all([
-    prisma.incident.count({ where }),
-    prisma.incident.findMany({
-      where,
-      skip,
-      take: limit,
-      orderBy: { [query.sortBy]: query.sortOrder },
-      include: {
-        reportedBy: {
-          select: { id: true, email: true, firstName: true, lastName: true },
-        },
-        assignedTo: {
-          select: { id: true, email: true, firstName: true, lastName: true },
-        },
-        assignments: {
-          where: { isActive: true },
+  const scopeKey = hasUniversalRead ? "all" : `user:${user.id}`;
+  const normalizedQuery = {
+    page,
+    limit,
+    status: query.status ?? "",
+    severity: query.severity ?? "",
+    priority: query.priority ?? "",
+    category: query.category ?? "",
+    search: query.search ?? "",
+    sortBy: query.sortBy ?? "createdAt",
+    sortOrder: query.sortOrder ?? "desc",
+  };
+  const queryHash = crypto
+    .createHash("sha256")
+    .update(JSON.stringify(normalizedQuery))
+    .digest("hex")
+    .slice(0, 16);
+  const cacheKey = `incident:list:${scopeKey}:${queryHash}`;
+
+  return getOrSet(
+    cacheKey,
+    async () => {
+      const [total, incidents] = await Promise.all([
+        prisma.incident.count({ where }),
+        prisma.incident.findMany({
+          where,
+          skip,
+          take: limit,
+          orderBy: { [query.sortBy]: query.sortOrder },
           include: {
-            user: {
+            reportedBy: {
               select: { id: true, email: true, firstName: true, lastName: true },
             },
+            assignedTo: {
+              select: { id: true, email: true, firstName: true, lastName: true },
+            },
+            assignments: {
+              where: { isActive: true },
+              include: {
+                user: {
+                  select: { id: true, email: true, firstName: true, lastName: true },
+                },
+              },
+            },
           },
-        },
-      },
-    }),
-  ]);
+        }),
+      ]);
 
-  return {
-    incidents,
-    pagination: {
-      total,
-      page,
-      limit,
-      totalPages: Math.ceil(total / limit) || 1,
+      return {
+        incidents,
+        pagination: {
+          total,
+          page,
+          limit,
+          totalPages: Math.ceil(total / limit) || 1,
+        },
+      };
     },
-  };
+    60
+  );
 }
 
 /**
  * Retrieves incident details with strict resource-level authorization.
  */
 export async function getIncidentById(user: AuthenticatedUser, incidentId: string) {
-  const incident = await prisma.incident.findUnique({
-    where: { id: incidentId },
-    include: {
-      reportedBy: {
-        select: { id: true, email: true, firstName: true, lastName: true },
-      },
-      assignedTo: {
-        select: { id: true, email: true, firstName: true, lastName: true },
-      },
-      assignments: {
+  const incident = await getOrSet(
+    `incident:detail:${incidentId}`,
+    async () => {
+      const found = await prisma.incident.findUnique({
+        where: { id: incidentId },
         include: {
-          user: {
+          reportedBy: {
             select: { id: true, email: true, firstName: true, lastName: true },
           },
-          assignedBy: {
+          assignedTo: {
             select: { id: true, email: true, firstName: true, lastName: true },
+          },
+          assignments: {
+            include: {
+              user: {
+                select: { id: true, email: true, firstName: true, lastName: true },
+              },
+              assignedBy: {
+                select: { id: true, email: true, firstName: true, lastName: true },
+              },
+            },
+            orderBy: { assignedAt: "desc" },
+          },
+          history: {
+            include: {
+              actor: {
+                select: { id: true, email: true, firstName: true, lastName: true },
+              },
+            },
+            orderBy: { createdAt: "desc" },
+          },
+          investigation: {
+            include: {
+              lead: {
+                select: { id: true, email: true, firstName: true, lastName: true },
+              },
+            },
           },
         },
-        orderBy: { assignedAt: "desc" },
-      },
-      history: {
-        include: {
-          actor: {
-            select: { id: true, email: true, firstName: true, lastName: true },
-          },
-        },
-        orderBy: { createdAt: "desc" },
-      },
-      investigation: {
-        include: {
-          lead: {
-            select: { id: true, email: true, firstName: true, lastName: true },
-          },
-        },
-      },
-    },
-  });
+      });
 
-  if (!incident) {
-    throw new IncidentNotFoundError();
-  }
+      if (!found) {
+        throw new IncidentNotFoundError();
+      }
+
+      return found;
+    },
+    60
+  );
 
   // Resource-level authorization
   const assigneeIds = [
@@ -540,6 +592,7 @@ export async function updateIncident(
     },
   });
 
+  void invalidateIncidentCache(updatedIncident.id);
   return updatedIncident;
 }
 
@@ -729,6 +782,7 @@ export async function changeIncidentStatus(
     },
   });
 
+  void invalidateIncidentCache(updatedIncident.id);
   return updatedIncident;
 }
 
@@ -934,6 +988,7 @@ export async function assignIncident(
     },
   });
 
+  void invalidateIncidentCache(updatedIncident.id);
   return updatedIncident;
 }
 
@@ -943,45 +998,51 @@ export async function assignIncident(
  * Retrieves the list of active users eligible for incident response assignments.
  */
 export async function getActiveResponders() {
-  const responderRoles = [
-    "INVESTIGATOR",
-    "SECURITY_ENGINEER",
-    "INCIDENT_COMMANDER",
-    "SECURITY_ANALYST",
-  ];
+  return getOrSet(
+    "incident:responders:active",
+    async () => {
+      const responderRoles = [
+        "INVESTIGATOR",
+        "SECURITY_ENGINEER",
+        "INCIDENT_COMMANDER",
+        "SECURITY_ANALYST",
+      ];
 
-  const users = await prisma.user.findMany({
-    where: {
-      status: "ACTIVE",
-      roles: {
-        some: {
-          role: {
-            code: { in: responderRoles },
+      const users = await prisma.user.findMany({
+        where: {
+          status: "ACTIVE",
+          roles: {
+            some: {
+              role: {
+                code: { in: responderRoles },
+              },
+            },
           },
         },
-      },
-    },
-    select: {
-      id: true,
-      email: true,
-      firstName: true,
-      lastName: true,
-      roles: {
         select: {
-          role: {
-            select: { code: true, name: true },
+          id: true,
+          email: true,
+          firstName: true,
+          lastName: true,
+          roles: {
+            select: {
+              role: {
+                select: { code: true, name: true },
+              },
+            },
           },
         },
-      },
-    },
-    orderBy: { firstName: "asc" },
-  });
+        orderBy: { firstName: "asc" },
+      });
 
-  return users.map((u) => ({
-    id: u.id,
-    email: u.email,
-    firstName: u.firstName,
-    lastName: u.lastName,
-    roles: u.roles.map((r) => r.role.code),
-  }));
+      return users.map((u) => ({
+        id: u.id,
+        email: u.email,
+        firstName: u.firstName,
+        lastName: u.lastName,
+        roles: u.roles.map((r) => r.role.code),
+      }));
+    },
+    60
+  );
 }

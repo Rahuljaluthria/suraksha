@@ -24,6 +24,23 @@ function assert(condition: boolean, message: string) {
   }
 }
 
+function mockKafkaPayload(key: string, value: string, offset = "1") {
+  return {
+    topic: TOPICS.INCIDENT_EVENTS,
+    partition: 0,
+    message: {
+      key: Buffer.from(key),
+      value: Buffer.from(value),
+      timestamp: String(Date.now()),
+      attributes: 0,
+      offset,
+      headers: {},
+    },
+    heartbeat: async () => {},
+    pause: () => () => {},
+  } as any;
+}
+
 async function runWorkerConsumerTests(): Promise<void> {
   console.log("==========================================");
   console.log("     BATCH 11: WORKER CONSUMER TESTS      ");
@@ -129,19 +146,7 @@ async function runWorkerConsumerTests(): Promise<void> {
     };
 
     // Invoke handler directly simulating Kafka message arrival
-    await handleIncidentMessage({
-      topic: TOPICS.INCIDENT_EVENTS,
-      partition: 0,
-      message: {
-        key: Buffer.from(incident.id),
-        value: Buffer.from(JSON.stringify(createEvent)),
-        timestamp: String(Date.now()),
-        attributes: 0,
-        offset: "1",
-      },
-      heartbeat: async () => {},
-      pause: () => () => {},
-    });
+    await handleIncidentMessage(mockKafkaPayload(incident.id, JSON.stringify(createEvent), "1"));
 
     // Verify Notification created for reporter
     const reporterNotification = await prisma.notification.findFirst({
@@ -174,19 +179,7 @@ async function runWorkerConsumerTests(): Promise<void> {
     });
 
     // Replay the exact same message
-    await handleIncidentMessage({
-      topic: TOPICS.INCIDENT_EVENTS,
-      partition: 0,
-      message: {
-        key: Buffer.from(incident.id),
-        value: Buffer.from(JSON.stringify(createEvent)),
-        timestamp: String(Date.now()),
-        attributes: 0,
-        offset: "2",
-      },
-      heartbeat: async () => {},
-      pause: () => () => {},
-    });
+    await handleIncidentMessage(mockKafkaPayload(incident.id, JSON.stringify(createEvent), "2"));
 
     const notificationCountAfter = await prisma.notification.count({
       where: { userId: reporter.id, entityId: incident.id },
@@ -229,19 +222,7 @@ async function runWorkerConsumerTests(): Promise<void> {
       },
     };
 
-    await handleIncidentMessage({
-      topic: TOPICS.INCIDENT_EVENTS,
-      partition: 0,
-      message: {
-        key: Buffer.from(incident.id),
-        value: Buffer.from(JSON.stringify(assignEvent)),
-        timestamp: String(Date.now()),
-        attributes: 0,
-        offset: "3",
-      },
-      heartbeat: async () => {},
-      pause: () => () => {},
-    });
+    await handleIncidentMessage(mockKafkaPayload(incident.id, JSON.stringify(assignEvent), "3"));
 
     const assigneeNotification = await prisma.notification.findFirst({
       where: {
@@ -279,19 +260,7 @@ async function runWorkerConsumerTests(): Promise<void> {
       },
     };
 
-    await handleIncidentMessage({
-      topic: TOPICS.INCIDENT_EVENTS,
-      partition: 0,
-      message: {
-        key: Buffer.from(incident.id),
-        value: Buffer.from(JSON.stringify(escalateEvent)),
-        timestamp: String(Date.now()),
-        attributes: 0,
-        offset: "4",
-      },
-      heartbeat: async () => {},
-      pause: () => () => {},
-    });
+    await handleIncidentMessage(mockKafkaPayload(incident.id, JSON.stringify(escalateEvent), "4"));
 
     const commanderNotification = await prisma.notification.findFirst({
       where: {
@@ -309,19 +278,7 @@ async function runWorkerConsumerTests(): Promise<void> {
     console.log("\n--- Suite 5: Dead-Letter Queue (DLQ) for Poison Messages ---");
 
     // 5.1 Invalid JSON payload
-    await handleIncidentMessage({
-      topic: TOPICS.INCIDENT_EVENTS,
-      partition: 0,
-      message: {
-        key: Buffer.from("invalid-key"),
-        value: Buffer.from("{ malformed json: not valid ..."),
-        timestamp: String(Date.now()),
-        attributes: 0,
-        offset: "5",
-      },
-      heartbeat: async () => {},
-      pause: () => () => {},
-    });
+    await handleIncidentMessage(mockKafkaPayload("invalid-key", "{ malformed json: not valid ...", "5"));
     assert(true, "5.1 Malformed JSON does not crash worker; forwarded to DLQ safely");
 
     // 5.2 Invalid Schema payload
@@ -331,19 +288,7 @@ async function runWorkerConsumerTests(): Promise<void> {
       eventType: "UNKNOWN_EVENT_TYPE",
     };
 
-    await handleIncidentMessage({
-      topic: TOPICS.INCIDENT_EVENTS,
-      partition: 0,
-      message: {
-        key: Buffer.from("bad-schema-key"),
-        value: Buffer.from(JSON.stringify(invalidSchemaPayload)),
-        timestamp: String(Date.now()),
-        attributes: 0,
-        offset: "6",
-      },
-      heartbeat: async () => {},
-      pause: () => () => {},
-    });
+    await handleIncidentMessage(mockKafkaPayload("bad-schema-key", JSON.stringify(invalidSchemaPayload), "6"));
     assert(true, "5.2 Schema violation safely rejected and routed to DLQ without crashing");
 
   } finally {

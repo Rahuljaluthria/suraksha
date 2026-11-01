@@ -1,4 +1,5 @@
 import type { Request, Response } from "express";
+import { getIncidentStatistics } from "./incident.stats.js";
 import {
   createIncident,
   listIncidents,
@@ -193,6 +194,20 @@ export async function getRespondersHandler(_req: Request, res: Response): Promis
     res.status(200).json({
       success: true,
       data: responders,
+    });
+  } catch (error) {
+    handleError(error, res);
+  }
+}
+
+export async function getIncidentStatsHandler(req: Request, res: Response): Promise<void> {
+  try {
+    const user = req.user!;
+    const stats = await getIncidentStatistics(user);
+
+    res.status(200).json({
+      success: true,
+      data: stats,
     });
   } catch (error) {
     handleError(error, res);
