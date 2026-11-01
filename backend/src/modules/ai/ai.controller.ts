@@ -12,6 +12,10 @@ import { ANALYSIS_PROMPT_VERSION } from "./prompts/analysis.js";
 import { REMEDIATION_PROMPT_VERSION } from "./prompts/remediation.js";
 import { REPORT_DRAFT_PROMPT_VERSION } from "./prompts/reportDraft.js";
 import { isAiConfigured } from "./providers/deepseek.client.js";
+import crypto from "node:crypto";
+import { prisma } from "../../config/prisma.js";
+import { stageOutboxEvent, triggerOutboxDispatch } from "../../services/outbox.service.js";
+import { EVENT_VERSION, TOPICS } from "../../events/eventTypes.js";
 import { getIncidentById, ForbiddenOperationError, IncidentNotFoundError } from "../incidents/incident.service.js";
 
 /** Shared by every AI handler: maps typed AI and incident-access errors to consistent HTTP responses. */
@@ -69,6 +73,31 @@ export async function reportDraftHandler(req: Request, res: Response): Promise<v
     auditBase.redactions = prepared.redaction.counts;
     const { response, callMeta } = await runReportDraft(prepared);
     await auditAiCall({ ...auditBase, meta: callMeta });
+
+    try {
+      await stageOutboxEvent(prisma, {
+        eventId: `evt_${crypto.randomUUID()}`,
+        version: EVENT_VERSION,
+        eventType: "AI_REPORT_GENERATED",
+        topic: TOPICS.INCIDENT_EVENTS,
+        timestamp: new Date().toISOString(),
+        producer: "suraksha-backend",
+        aggregateType: "AI",
+        aggregateId: req.user?.id || "anonymous",
+        actorId: req.user?.id,
+        data: {
+          inputChars: auditBase.inputChars,
+          redactionCounts: auditBase.redactions,
+          promptVersion: auditBase.promptVersion,
+          suggestedCategory: response.draft.category,
+          suggestedSeverity: response.draft.suggestedSeverity.level,
+        },
+      });
+      triggerOutboxDispatch();
+    } catch (outboxErr) {
+      console.warn("[AI] Non-blocking outbox event error for report draft:", outboxErr);
+    }
+
     res.status(200).json({ success: true, data: response });
   } catch (error) {
     await auditAiCall({ ...auditBase, error });
@@ -112,6 +141,58 @@ async function handleIncidentAiRequest(
 
     const { response, callMeta } = await run(prepared);
     await auditAiCall({ ...auditBase, inputChars, redactions, meta: callMeta });
+
+    try {
+      if (feature.name === "INCIDENT_ANALYSIS") {
+        const analysisData = response as any;
+        await stageOutboxEvent(prisma, {
+          eventId: `evt_${crypto.randomUUID()}`,
+          version: EVENT_VERSION,
+          eventType: "AI_ANALYSIS_COMPLETED",
+          topic: TOPICS.INCIDENT_EVENTS,
+          timestamp: new Date().toISOString(),
+          producer: "suraksha-backend",
+          aggregateType: "AI",
+          aggregateId: incidentId,
+          actorId: req.user?.id,
+          data: {
+            incidentId,
+            incidentNumber: incident.incidentNumber,
+            actorId: req.user?.id,
+            promptVersion: feature.promptVersion,
+            factsCount: analysisData.observedFacts?.length || 0,
+            hypothesesCount: analysisData.hypotheses?.length || 0,
+            confidence: analysisData.confidenceLevel,
+          },
+        });
+        triggerOutboxDispatch();
+      } else if (feature.name === "REMEDIATION_SUGGESTIONS") {
+        const remData = response as any;
+        await stageOutboxEvent(prisma, {
+          eventId: `evt_${crypto.randomUUID()}`,
+          version: EVENT_VERSION,
+          eventType: "REMEDIATION_SUGGESTIONS_GENERATED",
+          topic: TOPICS.INCIDENT_EVENTS,
+          timestamp: new Date().toISOString(),
+          producer: "suraksha-backend",
+          aggregateType: "AI",
+          aggregateId: incidentId,
+          actorId: req.user?.id,
+          data: {
+            incidentId,
+            incidentNumber: incident.incidentNumber,
+            actorId: req.user?.id,
+            promptVersion: feature.promptVersion,
+            recommendationsCount: remData.recommendations?.length || 0,
+            riskFlags: remData.riskFlags || [],
+          },
+        });
+        triggerOutboxDispatch();
+      }
+    } catch (outboxErr) {
+      console.warn(`[AI] Non-blocking outbox event error for ${feature.name}:`, outboxErr);
+    }
+
     res.status(200).json({ success: true, data: response });
   } catch (error) {
     await auditAiCall({ ...auditBase, inputChars, redactions, error });

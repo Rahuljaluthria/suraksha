@@ -61,7 +61,10 @@ export const ModelName = {
   Incident: 'Incident',
   IncidentAssignment: 'IncidentAssignment',
   IncidentHistory: 'IncidentHistory',
-  Investigation: 'Investigation'
+  Investigation: 'Investigation',
+  OutboxEvent: 'OutboxEvent',
+  ProcessedEvent: 'ProcessedEvent',
+  Notification: 'Notification'
 } as const
 
 export type ModelName = (typeof ModelName)[keyof typeof ModelName]
@@ -240,6 +243,53 @@ export const InvestigationScalarFieldEnum = {
 export type InvestigationScalarFieldEnum = (typeof InvestigationScalarFieldEnum)[keyof typeof InvestigationScalarFieldEnum]
 
 
+export const OutboxEventScalarFieldEnum = {
+  id: 'id',
+  eventId: 'eventId',
+  eventType: 'eventType',
+  topic: 'topic',
+  aggregateType: 'aggregateType',
+  aggregateId: 'aggregateId',
+  payload: 'payload',
+  headers: 'headers',
+  status: 'status',
+  retryCount: 'retryCount',
+  lastError: 'lastError',
+  createdAt: 'createdAt',
+  publishedAt: 'publishedAt'
+} as const
+
+export type OutboxEventScalarFieldEnum = (typeof OutboxEventScalarFieldEnum)[keyof typeof OutboxEventScalarFieldEnum]
+
+
+export const ProcessedEventScalarFieldEnum = {
+  id: 'id',
+  eventId: 'eventId',
+  consumerGroup: 'consumerGroup',
+  eventType: 'eventType',
+  processedAt: 'processedAt'
+} as const
+
+export type ProcessedEventScalarFieldEnum = (typeof ProcessedEventScalarFieldEnum)[keyof typeof ProcessedEventScalarFieldEnum]
+
+
+export const NotificationScalarFieldEnum = {
+  id: 'id',
+  userId: 'userId',
+  title: 'title',
+  message: 'message',
+  type: 'type',
+  entityType: 'entityType',
+  entityId: 'entityId',
+  isRead: 'isRead',
+  createdAt: 'createdAt',
+  readAt: 'readAt',
+  metadata: 'metadata'
+} as const
+
+export type NotificationScalarFieldEnum = (typeof NotificationScalarFieldEnum)[keyof typeof NotificationScalarFieldEnum]
+
+
 export const SortOrder = {
   asc: 'asc',
   desc: 'desc'
@@ -254,6 +304,13 @@ export const NullableJsonNullValueInput = {
 } as const
 
 export type NullableJsonNullValueInput = (typeof NullableJsonNullValueInput)[keyof typeof NullableJsonNullValueInput]
+
+
+export const JsonNullValueInput = {
+  JsonNull: JsonNull
+} as const
+
+export type JsonNullValueInput = (typeof JsonNullValueInput)[keyof typeof JsonNullValueInput]
 
 
 export const NullsOrder = {
@@ -399,4 +456,40 @@ export const InvestigationOrderByRelevanceFieldEnum = {
 } as const
 
 export type InvestigationOrderByRelevanceFieldEnum = (typeof InvestigationOrderByRelevanceFieldEnum)[keyof typeof InvestigationOrderByRelevanceFieldEnum]
+
+
+export const OutboxEventOrderByRelevanceFieldEnum = {
+  id: 'id',
+  eventId: 'eventId',
+  eventType: 'eventType',
+  topic: 'topic',
+  aggregateType: 'aggregateType',
+  aggregateId: 'aggregateId',
+  lastError: 'lastError'
+} as const
+
+export type OutboxEventOrderByRelevanceFieldEnum = (typeof OutboxEventOrderByRelevanceFieldEnum)[keyof typeof OutboxEventOrderByRelevanceFieldEnum]
+
+
+export const ProcessedEventOrderByRelevanceFieldEnum = {
+  id: 'id',
+  eventId: 'eventId',
+  consumerGroup: 'consumerGroup',
+  eventType: 'eventType'
+} as const
+
+export type ProcessedEventOrderByRelevanceFieldEnum = (typeof ProcessedEventOrderByRelevanceFieldEnum)[keyof typeof ProcessedEventOrderByRelevanceFieldEnum]
+
+
+export const NotificationOrderByRelevanceFieldEnum = {
+  id: 'id',
+  userId: 'userId',
+  title: 'title',
+  message: 'message',
+  type: 'type',
+  entityType: 'entityType',
+  entityId: 'entityId'
+} as const
+
+export type NotificationOrderByRelevanceFieldEnum = (typeof NotificationOrderByRelevanceFieldEnum)[keyof typeof NotificationOrderByRelevanceFieldEnum]
 

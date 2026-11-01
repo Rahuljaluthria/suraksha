@@ -1,47 +1,41 @@
-
 import "dotenv/config";
-import { Kafka, logLevel } from "kafkajs";
-
-const brokers = (process.env.KAFKA_BROKERS || "localhost:9094")
-  .split(",")
-  .map((broker) => broker.trim())
-  .filter(Boolean);
-
-const kafka = new Kafka({
-  clientId: "suraksha-worker",
-  brokers,
-  logLevel: logLevel.ERROR,
-});
-
-const consumer = kafka.consumer({
-  groupId: "suraksha-worker-group",
-});
+import { connectProducer, disconnectProducer } from "./config/kafka.js";
+import { startIncidentConsumer, stopIncidentConsumer } from "./consumers/incident.consumer.js";
+import { prisma } from "./config/prisma.js";
 
 const startWorker = async (): Promise<void> => {
   try {
-    await consumer.connect();
+    console.log("==========================================");
+    console.log("       SURAKSHA EVENT WORKER v1.0.0       ");
+    console.log("==========================================");
 
-    console.log("----------------------------------");
-    console.log("       SURAKSHA WORKER");
-    console.log("----------------------------------");
-    console.log("[Kafka] Worker connected successfully");
-    console.log("[Worker] Initialized and waiting for Phase 6 processing");
-    console.log("----------------------------------");
+    await connectProducer();
+    await startIncidentConsumer();
+
+    console.log("[Worker] All consumers and producers initialized successfully");
+    console.log("==========================================");
   } catch (error) {
     console.error("[Worker] Startup failed:", error);
-    throw error;
+    process.exit(1);
   }
 };
 
+let isShuttingDown = false;
+
 const shutdown = async (signal: string): Promise<void> => {
-  console.log(`\n[Worker] Received ${signal}. Shutting down...`);
+  if (isShuttingDown) return;
+  isShuttingDown = true;
+
+  console.log(`\n[Worker] Received ${signal}. Initiating graceful shutdown...`);
 
   try {
-    await consumer.disconnect();
-    console.log("[Worker] Kafka disconnected");
+    await stopIncidentConsumer();
+    await disconnectProducer();
+    await prisma.$disconnect();
+    console.log("[Worker] Graceful shutdown complete. Exiting cleanly.");
     process.exit(0);
   } catch (error) {
-    console.error("[Worker] Shutdown failed:", error);
+    console.error("[Worker] Shutdown encountered errors:", error);
     process.exit(1);
   }
 };
@@ -49,6 +43,4 @@ const shutdown = async (signal: string): Promise<void> => {
 process.on("SIGINT", () => void shutdown("SIGINT"));
 process.on("SIGTERM", () => void shutdown("SIGTERM"));
 
-startWorker().catch(() => {
-  process.exit(1);
-});
+void startWorker();

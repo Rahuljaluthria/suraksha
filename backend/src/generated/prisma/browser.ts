@@ -72,3 +72,18 @@ export type IncidentHistory = Prisma.IncidentHistoryModel
  * 
  */
 export type Investigation = Prisma.InvestigationModel
+/**
+ * Model OutboxEvent
+ * 
+ */
+export type OutboxEvent = Prisma.OutboxEventModel
+/**
+ * Model ProcessedEvent
+ * 
+ */
+export type ProcessedEvent = Prisma.ProcessedEventModel
+/**
+ * Model Notification
+ * 
+ */
+export type Notification = Prisma.NotificationModel

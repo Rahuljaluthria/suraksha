@@ -6,6 +6,7 @@ import app from "./app.js";
 import { prisma } from "./config/prisma.js";
 import { connectRedis, disconnectRedis } from "./config/redis.js";
 import { connectKafka, disconnectKafka } from "./config/kafka.js";
+import { startOutboxDispatcher, stopOutboxDispatcher } from "./services/outbox.service.js";
 
 const PORT = Number(process.env.PORT) || 5000;
 
@@ -28,6 +29,7 @@ const startServer = async (): Promise<void> => {
       console.log("[Redis] Ready");
       console.log("[Kafka] Ready");
       console.log("----------------------------------");
+      startOutboxDispatcher();
     });
   } catch (error) {
     console.error("[Backend] Startup failed:", error);
@@ -57,6 +59,8 @@ const shutdown = async (signal: string): Promise<void> => {
         });
       });
     }
+
+    stopOutboxDispatcher();
 
     await Promise.all([
       disconnectKafka(),

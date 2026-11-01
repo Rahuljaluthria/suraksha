@@ -8,7 +8,10 @@ import {
 import type { AuthenticatedUser } from "../../middleware/auth.js";
 import { authorizeResourceAccess } from "../../utils/resourceAuth.js";
 import { createAuditLog } from "../../utils/audit.js";
+import crypto from "node:crypto";
 import { publishIncidentEvent } from "../../services/incidentEvent.service.js";
+import { stageOutboxEvent, triggerOutboxDispatch } from "../../services/outbox.service.js";
+import { EVENT_VERSION, TOPICS } from "../../events/eventTypes.js";
 import type {
   CreateIncidentInput,
   UpdateIncidentInput,
@@ -173,8 +176,33 @@ export async function createIncident(
       tx
     );
 
+    await stageOutboxEvent(tx, {
+      eventId: `evt_${crypto.randomUUID()}`,
+      version: EVENT_VERSION,
+      eventType: "INCIDENT_CREATED",
+      topic: TOPICS.INCIDENT_EVENTS,
+      timestamp: new Date().toISOString(),
+      producer: "suraksha-backend",
+      aggregateType: "INCIDENT",
+      aggregateId: newIncident.id,
+      actorId: user.id,
+      data: {
+        incidentId: newIncident.id,
+        incidentNumber: newIncident.incidentNumber,
+        title: newIncident.title,
+        severity: newIncident.severity,
+        priority: newIncident.priority,
+        status: newIncident.status,
+        category: newIncident.category,
+        reportedById: user.id,
+        reportedByEmail: user.email,
+      },
+    });
+
     return newIncident;
   });
+
+  triggerOutboxDispatch();
 
   // Publish to Kafka topic asynchronously (non-blocking)
   await publishIncidentEvent({
@@ -474,8 +502,31 @@ export async function updateIncident(
       tx
     );
 
+    await stageOutboxEvent(tx, {
+      eventId: `evt_${crypto.randomUUID()}`,
+      version: EVENT_VERSION,
+      eventType: "INCIDENT_UPDATED",
+      topic: TOPICS.INCIDENT_EVENTS,
+      timestamp: new Date().toISOString(),
+      producer: "suraksha-backend",
+      aggregateType: "INCIDENT",
+      aggregateId: updated.id,
+      actorId: user.id,
+      data: {
+        incidentId: updated.id,
+        incidentNumber: updated.incidentNumber,
+        changedFields,
+        severity: updated.severity,
+        priority: updated.priority,
+        title: updated.title,
+        category: updated.category,
+      },
+    });
+
     return updated;
   });
+
+  triggerOutboxDispatch();
 
   await publishIncidentEvent({
     eventType: "INCIDENT_UPDATED",
@@ -625,8 +676,39 @@ export async function changeIncidentStatus(
       tx
     );
 
+    const isEscalation = targetStatus === IncidentStatus.ESCALATED;
+    await stageOutboxEvent(tx, {
+      eventId: `evt_${crypto.randomUUID()}`,
+      version: EVENT_VERSION,
+      eventType: isEscalation ? "INCIDENT_ESCALATED" : "INCIDENT_STATUS_CHANGED",
+      topic: TOPICS.INCIDENT_EVENTS,
+      timestamp: new Date().toISOString(),
+      producer: "suraksha-backend",
+      aggregateType: "INCIDENT",
+      aggregateId: updated.id,
+      actorId: user.id,
+      data: isEscalation
+        ? {
+            incidentId: updated.id,
+            incidentNumber: updated.incidentNumber,
+            fromStatus: currentStatus,
+            toStatus: "ESCALATED",
+            severity: updated.severity,
+            notes: input.notes,
+          }
+        : {
+            incidentId: updated.id,
+            incidentNumber: updated.incidentNumber,
+            fromStatus: currentStatus,
+            toStatus: targetStatus,
+            notes: input.notes,
+          },
+    });
+
     return updated;
   });
+
+  triggerOutboxDispatch();
 
   await publishIncidentEvent({
     eventType:
@@ -812,8 +894,31 @@ export async function assignIncident(
       tx
     );
 
+    await stageOutboxEvent(tx, {
+      eventId: `evt_${crypto.randomUUID()}`,
+      version: EVENT_VERSION,
+      eventType: "INCIDENT_ASSIGNED",
+      topic: TOPICS.INCIDENT_EVENTS,
+      timestamp: new Date().toISOString(),
+      producer: "suraksha-backend",
+      aggregateType: "INCIDENT",
+      aggregateId: updated.id,
+      actorId: user.id,
+      data: {
+        incidentId: updated.id,
+        incidentNumber: updated.incidentNumber,
+        assignedToId: targetUser.id,
+        assignedToEmail: targetUser.email,
+        assignedById: user.id,
+        role: input.role || "PRIMARY_RESPONDER",
+        status: updated.status,
+      },
+    });
+
     return updated;
   });
+
+  triggerOutboxDispatch();
 
   await publishIncidentEvent({
     eventType: "INCIDENT_ASSIGNED",
