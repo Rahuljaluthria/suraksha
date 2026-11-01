@@ -13,6 +13,12 @@ const truncate = (value: string, max: number): string =>
   value.length > max ? `${value.slice(0, max)}…` : value;
 
 /**
+ * Incident details are cached in Redis as JSON, so on a cache hit every timestamp arrives as an
+ * ISO string instead of a Date. Normalise before using any Date method.
+ */
+const asDate = (value: Date | string): Date => (value instanceof Date ? value : new Date(value));
+
+/**
  * Builds the only view of an incident the model ever sees: an explicit allowlist of
  * fields. Reporter and responder identities (names, emails, ids) are deliberately
  * left out; only counts and role labels are included.
@@ -30,8 +36,8 @@ export function buildIncidentSections(incident: IncidentRecord): IncidentSection
     `Recorded severity: ${incident.severity} (a human or AI-assisted estimate, not verified)`,
     `Recorded priority: ${incident.priority}`,
     `Status: ${incident.status}`,
-    `Created: ${incident.createdAt.toISOString()}`,
-    incident.resolvedAt ? `Resolved: ${incident.resolvedAt.toISOString()}` : null,
+    `Created: ${asDate(incident.createdAt).toISOString()}`,
+    incident.resolvedAt ? `Resolved: ${asDate(incident.resolvedAt).toISOString()}` : null,
     tags.length > 0 ? `Tags: ${tags.join(", ")}` : null,
     `Active responders: ${activeAssignments.length}${
       activeAssignments.length > 0
@@ -43,12 +49,12 @@ export function buildIncidentSections(incident: IncidentRecord): IncidentSection
     .join("\n");
 
   const history = [...incident.history]
-    .sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime())
+    .sort((a, b) => asDate(a.createdAt).getTime() - asDate(b.createdAt).getTime())
     .slice(-MAX_HISTORY_ENTRIES)
     .map((h) => {
       const transition = h.fromStatus && h.toStatus ? ` ${h.fromStatus}->${h.toStatus}` : "";
       const notes = h.notes ? `: ${truncate(h.notes, MAX_NOTE_CHARS)}` : "";
-      return `${h.createdAt.toISOString()} ${h.action}${transition}${notes}`;
+      return `${asDate(h.createdAt).toISOString()} ${h.action}${transition}${notes}`;
     });
 
   const inv = incident.investigation;
@@ -122,7 +128,7 @@ export function prepareIncidentContext(
     incident: {
       id: incident.id,
       incidentNumber: incident.incidentNumber,
-      updatedAt: incident.updatedAt,
+      updatedAt: asDate(incident.updatedAt),
       severity: incident.severity,
       status: incident.status,
     },

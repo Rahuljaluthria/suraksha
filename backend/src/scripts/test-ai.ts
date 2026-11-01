@@ -8,6 +8,7 @@ import type { Server } from "node:http";
 import app from "../app.js";
 import { prisma } from "../config/prisma.js";
 import { disconnectRedis } from "../config/redis.js";
+import { deleteCache } from "../services/cache.service.js";
 import { env } from "../config/env.js";
 import { ROLES, type RoleCode } from "../config/rbac.js";
 import { createAccessToken } from "../utils/tokens.js";
@@ -17,7 +18,7 @@ import { redactText } from "../modules/ai/redaction.js";
 import { wrapUntrusted } from "../modules/ai/prompts/promptSafety.js";
 import { generateStructured } from "../modules/ai/jsonCompletion.js";
 import { findUnsupportedSpecifics, isGrounded } from "../modules/ai/ai.grounding.js";
-import { redactSections } from "../modules/ai/ai.incidentContext.js";
+import { buildIncidentSections, redactSections } from "../modules/ai/ai.incidentContext.js";
 import { detectRiskFlags } from "../modules/ai/ai.riskFlags.js";
 import {
   AiInvalidResponseError,
@@ -646,6 +647,38 @@ async function run(): Promise<void> {
     "12.2 placeholders stay consistent across sections"
   );
 
+  // Regression: incident details come back from the Redis cache as JSON, so every timestamp is a string.
+  const cachedShape = {
+    incidentNumber: "INC-2026-0001",
+    title: "t",
+    category: "MALWARE",
+    severity: "HIGH",
+    priority: "P2",
+    status: "NEW",
+    description: "d",
+    tags: null,
+    createdAt: "2026-11-01T01:00:00.000Z",
+    resolvedAt: "2026-11-01T05:00:00.000Z",
+    updatedAt: "2026-11-01T05:00:00.000Z",
+    assignments: [],
+    history: [
+      { createdAt: "2026-11-01T03:00:00.000Z", action: "B", fromStatus: null, toStatus: null, notes: null },
+      { createdAt: "2026-11-01T02:00:00.000Z", action: "A", fromStatus: null, toStatus: null, notes: null },
+    ],
+    investigation: null,
+  } as unknown as Parameters<typeof buildIncidentSections>[0];
+  let cachedSections: ReturnType<typeof buildIncidentSections> | null = null;
+  try {
+    cachedSections = buildIncidentSections(cachedShape);
+  } catch {
+    cachedSections = null;
+  }
+  assert(
+    cachedSections !== null && cachedSections.METADATA.includes("Created: 2026-11-01T01:00:00.000Z") &&
+      cachedSections.HISTORY.indexOf(" A") < cachedSections.HISTORY.indexOf(" B"),
+    "12.3 incident context accepts ISO-string timestamps (cache hits) and still orders history"
+  );
+
   console.log("\n--- Suite 13: POST /api/ai/incidents/:id/analysis (access) ---");
   const incident = await prisma.incident.create({
     data: {
@@ -721,6 +754,8 @@ async function run(): Promise<void> {
   await prisma.incidentAssignment.create({
     data: { incidentId: incident.id, userId: investigator.id, role: "PRIMARY_RESPONDER", isActive: true },
   });
+  // Writing straight to the database bypasses the app, so drop the cached incident the way the service would.
+  await deleteCache(`incident:detail:${incident.id}`);
   const invAllowed = await post(analysisUrl(incident.id), {}, investigator.token);
   assert(invAllowed.status === 200, "13.7 the same investigator succeeds once assigned");
 
@@ -859,6 +894,8 @@ async function run(): Promise<void> {
   await prisma.incidentAssignment.create({
     data: { incidentId: incident.id, userId: engineer.id, role: "PRIMARY_RESPONDER", isActive: true },
   });
+  // Writing straight to the database bypasses the app, so drop the cached incident the way the service would.
+  await deleteCache(`incident:detail:${incident.id}`);
   assert((await post(remUrl(incident.id), {}, engineer.token)).status === 200, "16.8 the same engineer succeeds once assigned");
 
   console.log("\n--- Suite 17: Remediation behaviour and guardrails ---");

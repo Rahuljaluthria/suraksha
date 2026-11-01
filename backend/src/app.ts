@@ -6,6 +6,9 @@ import cookieParser from "cookie-parser";
 import authRoutes from "./modules/auth/auth.routes.js";
 import incidentRoutes from "./modules/incidents/incident.routes.js";
 import aiRoutes from "./modules/ai/ai.routes.js";
+import healthRoutes from "./modules/system/health.routes.js";
+import notificationRoutes from "./modules/notifications/notification.routes.js";
+import securityRoutes from "./modules/security/security.routes.js";
 
 const app = express();
 
@@ -44,6 +47,9 @@ app.get("/api/health", (_req, res) => {
   });
 });
 
+// Detailed dependency health for signed-in users (the route above stays a plain liveness probe)
+app.use("/api/health/details", healthRoutes);
+
 // Authentication routes
 app.use("/api/auth", authRoutes);
 
@@ -52,5 +58,9 @@ app.use("/api/incidents", incidentRoutes);
 
 // AI-assisted incident features (advisory only)
 app.use("/api/ai", aiRoutes);
+
+// Per-user notifications and aggregated security activity (read-only)
+app.use("/api/notifications", notificationRoutes);
+app.use("/api/security", securityRoutes);
 
 export default app;

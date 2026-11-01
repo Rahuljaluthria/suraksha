@@ -104,7 +104,12 @@ export function AppLayout() {
         )}
       </header>
 
-      <main className="flex-1 p-4 md:p-6 max-w-6xl w-full mx-auto">
+      <main
+        className={cn(
+          "mx-auto w-full flex-1 p-4 md:p-6",
+          location.pathname === "/dashboard" ? "max-w-[1680px]" : "max-w-6xl"
+        )}
+      >
         <Outlet />
       </main>
 

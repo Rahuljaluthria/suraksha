@@ -16,6 +16,9 @@ const kafka = new Kafka({
   logLevel: logLevel.ERROR,
 });
 
+/** Exposed for health checks (admin client). Producers and consumers keep using the helpers below. */
+export const kafkaClient = kafka;
+
 export const kafkaProducer: Producer = kafka.producer();
 
 export const connectKafka = async (): Promise<void> => {
